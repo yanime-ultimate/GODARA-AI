@@ -11,7 +11,7 @@ const authOverlay = document.getElementById('auth-overlay');
 const appInterface = document.getElementById('app-interface');
 const authBtn = document.getElementById('authBtn');
 
-// --- 1. SECURE AUTHENTICATION ---
+// --- 1. AUTHENTICATION ---
 authBtn.onclick = () => {
     const user = document.getElementById('username').value.trim().toLowerCase();
     const pass = document.getElementById('password').value.trim();
@@ -41,27 +41,20 @@ function login(user) {
     localStorage.setItem('godara_user', user);
     currentUser = user;
     allSessions = JSON.parse(localStorage.getItem(`sessions_${user}`)) || {};
-    
-    // UI Switch - This reveals the chat window
     authOverlay.style.display = 'none';
-    appInterface.style.setProperty('display', 'flex', 'important'); // Forced visibility
-    
+    appInterface.style.display = 'flex';
     updateSidebar();
     appendMessage(`System Online. Welcome back, ${user}.`, 'ai');
 }
 
-// --- 2. LOGOUT ---
 document.getElementById('logoutBtn').onclick = () => {
-    if (confirm("Are you sure you want to logout?")) {
+    if (confirm("Logout?")) {
         localStorage.removeItem('godara_user');
-        currentUser = null;
-        appInterface.style.display = 'none';
-        authOverlay.style.display = 'flex';
         location.reload();
     }
 };
 
-// --- 3. VISION & ART ---
+// --- 2. VISION & ART ---
 document.getElementById('cam-input').onchange = (e) => {
     if (!e.target.files[0]) return;
     const reader = new FileReader();
@@ -79,7 +72,7 @@ function clearVision() {
     document.getElementById('cam-input').value = "";
 }
 
-// --- 4. MESSAGE ROUTING ---
+// --- 3. CORE LOGIC ---
 async function handleSend() {
     const input = document.getElementById('userInput');
     const text = input.value.trim();
@@ -89,7 +82,6 @@ async function handleSend() {
     const savedImg = imgBuffer;
     input.value = "";
     clearVision();
-    document.getElementById('sidebar').classList.remove('open');
 
     if (savedImg) {
         processVision(text, savedImg);
@@ -117,11 +109,10 @@ async function processBrain(text) {
         b.innerHTML = `<span class="task-badge">REPLY</span><br>`;
         typeEffect(b, aiText);
         saveMem(text, aiText);
-        updateSidebar();
-    } catch { b.textContent = "Brain link failed."; }
+    } catch { b.textContent = "Brain link failed. Please check internet."; }
 }
 
-// --- 5. HELPERS ---
+// --- 4. HELPERS ---
 function appendMessage(t, s, img = null) {
     const div = document.createElement('div');
     div.className = `message ${s}`;
@@ -135,33 +126,10 @@ function appendMessage(t, s, img = null) {
         span.textContent = t;
         div.appendChild(span);
     }
-    document.getElementById('chat-window').appendChild(div);
-    document.getElementById('chat-window').scrollTop = 99999;
+    const win = document.getElementById('chat-window');
+    win.appendChild(div);
+    win.scrollTop = win.scrollHeight;
     return div;
-}
-
-function saveMem(u, a) {
-    if (!allSessions[currentChatId]) allSessions[currentChatId] = { title: u.slice(0,25), msgs: [] };
-    allSessions[currentChatId].msgs.push({ u, a });
-    localStorage.setItem(`sessions_${currentUser}`, JSON.stringify(allSessions));
-}
-
-function updateSidebar() {
-    const list = document.getElementById('history-list');
-    list.innerHTML = "";
-    Object.keys(allSessions).reverse().forEach(id => {
-        const item = document.createElement('div');
-        item.className = "history-item"; // Added class for easier styling
-        item.style = "padding:12px; background:rgba(255,255,255,0.05); margin-top:8px; border-radius:10px; cursor:pointer;";
-        item.textContent = allSessions[id].title;
-        item.onclick = () => {
-            currentChatId = id;
-            document.getElementById('chat-window').innerHTML = "";
-            allSessions[id].msgs.forEach(m => { appendMessage(m.u, 'user'); appendMessage(m.a, 'ai'); });
-            document.getElementById('sidebar').classList.remove('open');
-        };
-        list.appendChild(item);
-    });
 }
 
 function typeEffect(el, txt) {
@@ -176,7 +144,30 @@ function typeEffect(el, txt) {
     }, 10);
 }
 
-// --- 6. EVENT LISTENERS ---
+function saveMem(u, a) {
+    if (!allSessions[currentChatId]) allSessions[currentChatId] = { title: u.slice(0,25), msgs: [] };
+    allSessions[currentChatId].msgs.push({ u, a });
+    localStorage.setItem(`sessions_${currentUser}`, JSON.stringify(allSessions));
+}
+
+function updateSidebar() {
+    const list = document.getElementById('history-list');
+    list.innerHTML = "";
+    Object.keys(allSessions).reverse().forEach(id => {
+        const item = document.createElement('div');
+        item.style = "padding:12px; background:rgba(255,255,255,0.05); margin-top:8px; border-radius:10px; cursor:pointer;";
+        item.textContent = allSessions[id].title;
+        item.onclick = () => {
+            currentChatId = id;
+            document.getElementById('chat-window').innerHTML = "";
+            allSessions[id].msgs.forEach(m => { appendMessage(m.u, 'user'); appendMessage(m.a, 'ai'); });
+            document.getElementById('sidebar').classList.remove('open');
+        };
+        list.appendChild(item);
+    });
+}
+
+// EVENT LISTENERS
 document.getElementById('sendBtn').onclick = handleSend;
 document.getElementById('userInput').onkeypress = (e) => { if(e.key === 'Enter') handleSend(); };
 document.getElementById('menuBtn').onclick = () => document.getElementById('sidebar').classList.toggle('open');
@@ -185,20 +176,9 @@ document.getElementById('togglePass').onclick = () => {
     const p = document.getElementById('password');
     p.type = p.type === "password" ? "text" : "password";
 };
-document.getElementById('toggle-auth').onclick = () => {
-    const isLogin = authBtn.textContent === "Sign In";
-    authBtn.textContent = isLogin ? "Sign Up" : "Sign In";
-    document.getElementById('auth-title').textContent = isLogin ? "Create Account" : "Godara AI";
-};
 
-// --- 7. BOOT CHECK ---
 window.onload = () => {
     const user = localStorage.getItem('godara_user');
-    if (user) {
-        login(user);
-    } else {
-        authOverlay.style.display = 'flex';
-        appInterface.style.display = 'none';
-    }
+    if (user) login(user);
 };
-                        
+    
