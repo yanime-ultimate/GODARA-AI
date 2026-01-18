@@ -42,31 +42,26 @@ function login(user) {
     currentUser = user;
     allSessions = JSON.parse(localStorage.getItem(`sessions_${user}`)) || {};
     
-    // UI Switch
+    // UI Switch - This reveals the chat window
     authOverlay.style.display = 'none';
-    appInterface.style.display = 'flex';
+    appInterface.style.setProperty('display', 'flex', 'important'); // Forced visibility
     
     updateSidebar();
     appendMessage(`System Online. Welcome back, ${user}.`, 'ai');
 }
 
-// --- 2. THE FIXED LOGOUT (RESET SYSTEM) ---
+// --- 2. LOGOUT ---
 document.getElementById('logoutBtn').onclick = () => {
     if (confirm("Are you sure you want to logout?")) {
-        // Clear session
         localStorage.removeItem('godara_user');
         currentUser = null;
-        
-        // Immediate UI hide to prevent flicker
         appInterface.style.display = 'none';
         authOverlay.style.display = 'flex';
-        
-        // Hard Refresh to reset all JS variables and listeners
         location.reload();
     }
 };
 
-// --- 3. GODARA VISION ENGINE ---
+// --- 3. VISION & ART ---
 document.getElementById('cam-input').onchange = (e) => {
     if (!e.target.files[0]) return;
     const reader = new FileReader();
@@ -104,43 +99,6 @@ async function handleSend() {
         processBrain(text);
     }
 }
-async function processVision(text, img) {
-    const b = appendMessage("", 'ai');
-    b.innerHTML = `<span class="task-badge">GODARA VISION</span><div class="loading-pulse"></div>`;
-    try {
-        const r = await fetch("https://api.mistral.ai/v1/chat/completions", {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${MISTRAL_KEY}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                model: "pixtral-12b-2409",
-                messages: [{ role: "user", content: [
-                    { type: "text", text: text || "Analyze this image." },
-                    { type: "image_url", image_url: img }
-                ]}]
-            })
-        });
-        const d = await r.json();
-        const response = d.choices[0].message.content;
-        b.innerHTML = `<span class="task-badge">VISION ANALYSIS</span><br>`;
-        typeEffect(b, response);
-        saveMem("📷 Vision Analysis", response);
-        updateSidebar();
-    } catch { b.textContent = "Vision server unreachable."; }
-}
-async function processArt(prompt) {
-    const b = appendMessage("", 'ai');
-    b.innerHTML = `<span class="task-badge">ARTIST</span><div class="loading-pulse"></div>`;
-    const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?nologo=true&seed=${Math.floor(Math.random()*999)}`;
-    const img = new Image();
-    img.src = url; 
-    img.className = 'ai-img';
-    img.onload = () => {
-        b.innerHTML = `<span class="task-badge" style="color:#10b981">DONE</span>`;
-        b.appendChild(img);
-        saveMem("🎨 Art: " + prompt.slice(0,10), "[Image]");
-        updateSidebar();
-    };
-}
 
 async function processBrain(text) {
     const b = appendMessage("", 'ai');
@@ -163,7 +121,7 @@ async function processBrain(text) {
     } catch { b.textContent = "Brain link failed."; }
 }
 
-// --- 5. UTILS & HELPERS ---
+// --- 5. HELPERS ---
 function appendMessage(t, s, img = null) {
     const div = document.createElement('div');
     div.className = `message ${s}`;
@@ -193,7 +151,8 @@ function updateSidebar() {
     list.innerHTML = "";
     Object.keys(allSessions).reverse().forEach(id => {
         const item = document.createElement('div');
-        item.style = "padding:12px; background:rgba(255,255,255,0.05); margin-top:8px; border-radius:10px; cursor:pointer; font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;";
+        item.className = "history-item"; // Added class for easier styling
+        item.style = "padding:12px; background:rgba(255,255,255,0.05); margin-top:8px; border-radius:10px; cursor:pointer;";
         item.textContent = allSessions[id].title;
         item.onclick = () => {
             currentChatId = id;
@@ -231,11 +190,6 @@ document.getElementById('toggle-auth').onclick = () => {
     authBtn.textContent = isLogin ? "Sign Up" : "Sign In";
     document.getElementById('auth-title').textContent = isLogin ? "Create Account" : "Godara AI";
 };
-document.getElementById('newChatBtn').onclick = () => {
-    currentChatId = Date.now();
-    document.getElementById('chat-window').innerHTML = '<div class="message ai">New session started. How can I help?</div>';
-    document.getElementById('sidebar').classList.remove('open');
-};
 
 // --- 7. BOOT CHECK ---
 window.onload = () => {
@@ -247,4 +201,4 @@ window.onload = () => {
         appInterface.style.display = 'none';
     }
 };
-
+                        
